@@ -1,0 +1,34 @@
+{
+  "name": "@zhehoo/registry-auth",
+  "version": "0.0.1",
+  "description": "Get you authenticated to private registry",
+  "homepage": "https://github.com/ZhehooMorgen/registry-auth#readme",
+  "bugs": {
+    "url": "https://github.com/ZhehooMorgen/registry-auth/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZhehooMorgen/registry-auth.git"
+  },
+  "license": "MIT",
+  "author": "Zhehoo Morgen",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc",
+    "prepack": "npm run build"
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^7.0.2"
+  },
+  "bin": {
+    "registry-auth": "dist/main.js"
+  }
+}
