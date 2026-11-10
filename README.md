@@ -29,6 +29,9 @@ last seven days and request package read/write access, including publishing and
 saving upstream packages, subject to your feed permissions.
 Run `registry-auth` again when credentials expire.
 
+Verbose output is disabled by default. Use `registry-auth --verbose` (or `-v`)
+to enable it.
+
 ## Non-interactive Use
 
 For scripts that must not prompt:

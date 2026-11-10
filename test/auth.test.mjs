@@ -394,7 +394,7 @@ test("verification retains decoded Basic auth and HTTP failure semantics", async
   }
 });
 
-test("CLI passes -N through and leaves configuration unchanged when login is required", async () => {
+test("CLI makes verbose output opt-in and passes -N without changing configuration", async () => {
   const project = join(directory, "project");
   await mkdir(project);
   const original =
@@ -402,20 +402,38 @@ test("CLI passes -N through and leaves configuration unchanged when login is req
   await writeFile(join(project, ".npmrc"), original);
   await writeFile(join(directory, ".npmrc"), "");
   process.chdir(project);
-  process.argv = [process.execPath, "registry-auth", "-N"];
-  const tenant = nextTenant();
-  globalThis.fetch = async (_url, options) => {
-    assert.notEqual(options.method, "POST");
-    return new Response(null, {
-      status: 401,
-      headers: { "X-VSS-ResourceTenant": tenant },
-    });
-  };
-  await import(
-    new URL(`../dist/main.js?noninteractive=${sequence}`, import.meta.url)
-  );
-  assert.equal(process.exitCode, 1);
-  assert.equal(state.prompts, 0);
-  assert.equal(await readFile(join(project, ".npmrc"), "utf8"), original);
-  assert.equal(await readFile(join(directory, ".npmrc"), "utf8"), "");
+  for (const flags of [[], ["--verbose"], ["-v"]]) {
+    state.messages = [];
+    process.exitCode = 0;
+    process.argv = [process.execPath, "registry-auth", "-N", ...flags];
+    const tenant = nextTenant();
+    globalThis.fetch = async (_url, options) => {
+      assert.notEqual(options.method, "POST");
+      return new Response(null, {
+        status: 401,
+        headers: { "X-VSS-ResourceTenant": tenant },
+      });
+    };
+    await import(
+      new URL(`../dist/main.js?noninteractive=${sequence}`, import.meta.url)
+    );
+    assert.equal(process.exitCode, 1);
+    assert.equal(state.prompts, 0);
+    assert.equal(
+      state.messages.includes("verbose: @zhehoo/registry-auth"),
+      flags.length > 0,
+    );
+    assert.equal(
+      state.messages.filter((message) => !message.startsWith("verbose: "))
+        .length,
+      1,
+    );
+    assert.ok(
+      state.messages.some((message) =>
+        message.startsWith("Interactive sign-in is required."),
+      ),
+    );
+    assert.equal(await readFile(join(project, ".npmrc"), "utf8"), original);
+    assert.equal(await readFile(join(directory, ".npmrc"), "utf8"), "");
+  }
 });

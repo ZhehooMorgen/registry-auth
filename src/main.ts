@@ -5,7 +5,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { createPat, verifyPat } from "./ado.ts";
-import { logVerbose, type NpmConfig } from "./utility.ts";
+import { logVerbose, setVerbose, type NpmConfig } from "./utility.ts";
 
 function parseConfig(config: string): NpmConfig[] {
   const configs = new Map<string, NpmConfig>();
@@ -108,6 +108,7 @@ async function main() {
   const { values } = parseArgs({
     options: {
       "non-interactive": { type: "boolean", short: "N", default: false },
+      verbose: { type: "boolean", short: "v", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
     allowPositionals: false,
@@ -115,10 +116,11 @@ async function main() {
   });
   if (values.help) {
     console.log(
-      "Usage: registry-auth [--non-interactive|-N]\n\n--non-interactive       Fail when silent sign-in cannot obtain a token",
+      "Usage: registry-auth [--non-interactive|-N] [--verbose|-v]\n\n--non-interactive       Fail when silent sign-in cannot obtain a token\n--verbose, -v           Show verbose output",
     );
     return;
   }
+  setVerbose(values.verbose);
   const authOptions = {
     nonInteractive: values["non-interactive"],
   };

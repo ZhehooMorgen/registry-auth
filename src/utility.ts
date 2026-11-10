@@ -1,4 +1,8 @@
-const verbose = true;
+let verbose = false;
+
+export function setVerbose(enabled: boolean) {
+  verbose = enabled;
+}
 
 export function logVerbose(content: string) {
   if (verbose) {
