@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 import { parse as iniParse } from "ini";
 import { appendFile, readFile, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import { parseArgs } from "node:util";
 import { createPat, verifyPat } from "./ado.ts";
 import { logVerbose, type NpmConfig } from "./utility.ts";
 
@@ -102,10 +105,27 @@ async function addPat(filename: string, configName: string, pat: string) {
 }
 
 async function main() {
+  const { values } = parseArgs({
+    options: {
+      "non-interactive": { type: "boolean", short: "N", default: false },
+      help: { type: "boolean", short: "h", default: false },
+    },
+    allowPositionals: false,
+    strict: true,
+  });
+  if (values.help) {
+    console.log(
+      "Usage: registry-auth [--non-interactive|-N]\n\n--non-interactive       Fail when silent sign-in cannot obtain a token",
+    );
+    return;
+  }
+  const authOptions = {
+    nonInteractive: values["non-interactive"],
+  };
   logVerbose(`@zhehoo/registry-auth`);
 
   const npmrcFilename = ".npmrc";
-  const userNpmrcFilename = `${process.env.HOME}/.npmrc`;
+  const userNpmrcFilename = join(homedir(), ".npmrc");
 
   const npmrcConfigs = parseConfig(await readFile(npmrcFilename, "utf-8"));
 
@@ -139,7 +159,7 @@ async function main() {
         logVerbose(`PAT is invalid`);
         // try to create a new PAT and put it in repo .npmrc
         logVerbose(`Creating new PAT for repo .npmrc`);
-        const newPat = await createPat(registryUrl);
+        const newPat = await createPat(registryUrl, authOptions);
         logVerbose(`Created new PAT`);
         console.log(`Update repo .npmrc with new PAT`);
         const newRepoPatConfig: NpmConfig = { ...repoPatConfig, value: newPat };
@@ -165,7 +185,7 @@ async function main() {
 
     // try to create a new PAT and put it in user .npmrc
     logVerbose(`Creating new PAT for user .npmrc`);
-    const newPat = await createPat(registryUrl);
+    const newPat = await createPat(registryUrl, authOptions);
     logVerbose(`Created new PAT`);
     if (userPatConfig) {
       console.log(`Update user .npmrc with new PAT`);
@@ -178,4 +198,9 @@ async function main() {
   }
 }
 
-main();
+await main().catch((error: unknown) => {
+  console.error(
+    error instanceof Error ? error.message : "Registry authentication failed",
+  );
+  process.exitCode = 1;
+});
