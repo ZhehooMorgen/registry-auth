@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { parse as iniParse } from "ini";
-import { readFile } from "node:fs/promises";
+import { appendFile, readFile, writeFile } from "node:fs/promises";
 
 const verbose = true;
 
@@ -80,20 +80,24 @@ function getPatConfigs(configs: NpmConfig[]): NpmConfig[] {
   });
 }
 
-function findPatConfig(
-  registryConfig: RegistryConfig,
-  configs: NpmConfig[],
-): NpmConfig | undefined {
+function getPatConfigName(registryConfig: RegistryConfig): string {
   const registryUrl = new URL(registryConfig.value);
   const pathname = registryUrl.pathname.endsWith("/")
     ? registryUrl.pathname
     : `${registryUrl.pathname}/`;
 
-  const patName = `//${registryUrl.host}${pathname}:_password`;
-  const patNameWithoutSlash = `//${registryUrl.host}${pathname.slice(0, -1)}:_password`;
+  return `//${registryUrl.host}${pathname}:_password`;
+}
+
+function findPatConfig(
+  registryConfig: RegistryConfig,
+  configs: NpmConfig[],
+): NpmConfig | undefined {
+  const configName = getPatConfigName(registryConfig);
+  const configNameWithoutSlash = configName.replace(/\/:_password$/, ":_password");
   return (
-    configs.find((config) => config.name === patName) ??
-    configs.find((config) => config.name === patNameWithoutSlash)
+    configs.find((config) => config.name === configName) ??
+    configs.find((config) => config.name === configNameWithoutSlash)
   );
 }
 
@@ -107,6 +111,47 @@ async function verifyPat(
 async function createPat(registryConfig: RegistryConfig): Promise<string> {
   // Placeholder implementation
   return "PLACEHOLDER_PAT";
+}
+
+async function updatePat(filename: string, patConfig: NpmConfig) {
+  const content = await readFile(filename, "utf8");
+  const config = parseConfig(content).find(
+    (config) => config.name === patConfig.name,
+  );
+  if (!config) {
+    throw new Error(`Config not found: ${patConfig.name}`);
+  }
+
+  const lines = content.split(/(\r\n|\r|\n)/);
+  const index = config.position.line * 2;
+  lines[index] = `${config.name}=${patConfig.value}`;
+  await writeFile(filename, lines.join(""), "utf8");
+}
+
+async function addPat(filename: string, configName: string, pat: string) {
+  const content = await readFile(filename, "utf8");
+  const configs = parseConfig(content);
+  const configPrefix = configName.slice(0, configName.lastIndexOf(":"));
+  // npm pairs username and _password only when their prefixes match exactly, including the trailing slash.
+  const findField = (field: string) =>
+    configs.find((config) => config.name === `${configPrefix}:${field}` && config.value);
+
+  const lines: string[] = [];
+  const username = findField("username");
+  if (!username) {
+    lines.push(`${configPrefix}:username=registry-auth`);
+  }
+
+  const email = findField("email");
+  if (!email) {
+    lines.push(`${configPrefix}:email=registry-auth@example.com`);
+  }
+
+  lines.push(`${configName}=${pat}`);
+
+  const newline = content.match(/\r\n|\r|\n/)?.[0] ?? "\n";
+  const separator = content && !/[\r\n]$/.test(content) ? newline : "";
+  await appendFile(filename, separator + lines.join(newline) + newline, "utf8");
 }
 
 async function main() {
@@ -152,6 +197,14 @@ async function main() {
         continue;
       } else {
         logVerbose(`PAT is invalid`);
+        // try to create a new PAT and put it in repo .npmrc
+        logVerbose(`Creating new PAT for repo .npmrc`);
+        const newPat = await createPat(registryConfig);
+        logVerbose(`Created new PAT`);
+        console.log(`Update repo .npmrc with new PAT`);
+        const newRepoPatConfig: NpmConfig = { ...repoPatConfig, value: newPat };
+        await updatePat(npmrcFilename, newRepoPatConfig);
+        continue;
       }
     } else {
       logVerbose(`No PAT found in repo .npmrc`);
@@ -169,21 +222,20 @@ async function main() {
     } else {
       logVerbose(`No PAT found in user .npmrc`);
     }
-    logVerbose(`Trying to create PAT for registry`);
+
+    // try to create a new PAT and put it in user .npmrc
+    logVerbose(`Creating new PAT for user .npmrc`);
     const newPat = await createPat(registryConfig);
     logVerbose(`Created new PAT`);
-    if (repoPatConfig) {
-      console.log(`Update repo .npmrc with new PAT`);
-      // Placeholder for updating user .npmrc with the new PAT
-      continue;
-    }
     if (userPatConfig) {
       console.log(`Update user .npmrc with new PAT`);
-      // Placeholder for updating user .npmrc with the new PAT
+      const newUserPatConfig: NpmConfig = { ...userPatConfig, value: newPat };
+      await updatePat(userNpmrcFilename, newUserPatConfig);
       continue;
     }
     console.log(`Add new PAT to repo .npmrc`);
-    // Placeholder for adding new PAT to repo .npmrc
+    const patConfigName = getPatConfigName(registryConfig);
+    await addPat(npmrcFilename, patConfigName, newPat);
   }
 }
 
