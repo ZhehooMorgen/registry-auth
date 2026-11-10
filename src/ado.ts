@@ -120,8 +120,8 @@ export async function createPat(
     },
     body: JSON.stringify({
       displayName: "registry-auth",
-      scope: "vso.packaging",
-      validTo: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      scope: "vso.packaging_write",
+      validTo: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       allOrgs: false,
     }),
     redirect: "error",

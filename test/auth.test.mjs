@@ -299,10 +299,10 @@ test("PAT creation discovers the tenant, preserves endpoint style and returns Ba
       assert.equal(options.method, "POST");
       assert.equal(options.headers.Authorization, "Bearer fake-entra-token");
       const body = JSON.parse(options.body);
-      assert.equal(body.scope, "vso.packaging");
+      assert.equal(body.scope, "vso.packaging_write");
       assert.equal(body.allOrgs, false);
       assert.ok(
-        Math.abs(Date.parse(body.validTo) - Date.now() - 86_400_000) < 5000,
+        Math.abs(Date.parse(body.validTo) - Date.now() - 7 * 86_400_000) < 5000,
       );
       return Response.json({
         patToken: { token: "fake-new-pat" },
