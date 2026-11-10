@@ -1,6 +1,6 @@
 {
   "name": "@zhehoo/registry-auth",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Get you authenticated to private registry",
   "homepage": "https://github.com/ZhehooMorgen/registry-auth#readme",
   "bugs": {
@@ -14,7 +14,7 @@
   "author": "Zhehoo Morgen",
   "type": "module",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=22"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
