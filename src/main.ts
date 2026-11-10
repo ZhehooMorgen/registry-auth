@@ -39,35 +39,13 @@ function parseConfig(config: string): NpmConfig[] {
   return [...configs.values()];
 }
 
-interface RegistryConfig extends NpmConfig {
-  type: RegistryType;
-}
-
-function parseRegistryConfigs(configs: NpmConfig[]): RegistryConfig[] {
-  const registryConfigs = configs.filter((config) => {
+function parseRegistryConfigs(configs: NpmConfig[]): NpmConfig[] {
+  return configs.filter((config) => {
     if (config.name === "registry") return true;
     const nameSections = config.name.split(":");
     if (nameSections.length === 2 && nameSections[1] === "registry")
       return true;
     return false;
-  });
-  return registryConfigs.map((config) => {
-    let type = RegistryType.Unknown;
-    try {
-      const registryUrl = new URL(config.value);
-      if (registryUrl.host === adoRegistryDomain) {
-        type = RegistryType.Ado;
-      }
-      if (registryUrl.host.endsWith(legacyAdoRegistryDomain)) {
-        type = RegistryType.AdoLegacy;
-      }
-    } catch (e) {
-      // ignore cases we cannot process
-    }
-    return {
-      ...config,
-      type,
-    };
   });
 }
 
@@ -80,21 +58,23 @@ function getPatConfigs(configs: NpmConfig[]): NpmConfig[] {
   });
 }
 
-function getPatConfigName(registryConfig: RegistryConfig): string {
-  const registryUrl = new URL(registryConfig.value);
-  const pathname = registryUrl.pathname.endsWith("/")
-    ? registryUrl.pathname
-    : `${registryUrl.pathname}/`;
+function getPatConfigName(registryUrl: string): string {
+  const url = new URL(registryUrl);
+  const pathname = url.pathname.endsWith("/")
+    ? url.pathname
+    : `${url.pathname}/`;
 
-  return `//${registryUrl.host}${pathname}:_password`;
+  return `//${url.host}${pathname}:_password`;
 }
 
 function findPatConfig(
-  registryConfig: RegistryConfig,
+  configName: string,
   configs: NpmConfig[],
 ): NpmConfig | undefined {
-  const configName = getPatConfigName(registryConfig);
-  const configNameWithoutSlash = configName.replace(/\/:_password$/, ":_password");
+  const configNameWithoutSlash = configName.replace(
+    /\/:_password$/,
+    ":_password",
+  );
   return (
     configs.find((config) => config.name === configName) ??
     configs.find((config) => config.name === configNameWithoutSlash)
@@ -102,13 +82,13 @@ function findPatConfig(
 }
 
 async function verifyPat(
-  registryConfig: RegistryConfig,
+  registryUrl: string,
   patConfig: NpmConfig,
 ): Promise<boolean> {
   return false; // Placeholder implementation
 }
 
-async function createPat(registryConfig: RegistryConfig): Promise<string> {
+async function createPat(registryUrl: string): Promise<string> {
   // Placeholder implementation
   return "PLACEHOLDER_PAT";
 }
@@ -134,7 +114,9 @@ async function addPat(filename: string, configName: string, pat: string) {
   const configPrefix = configName.slice(0, configName.lastIndexOf(":"));
   // npm pairs username and _password only when their prefixes match exactly, including the trailing slash.
   const findField = (field: string) =>
-    configs.find((config) => config.name === `${configPrefix}:${field}` && config.value);
+    configs.find(
+      (config) => config.name === `${configPrefix}:${field}` && config.value,
+    );
 
   const lines: string[] = [];
   const username = findField("username");
@@ -165,41 +147,34 @@ async function main() {
   const userNpmrcContent = await readFile(userNpmrcFilename, "utf-8");
   const userNpmrcConfigs = parseConfig(userNpmrcContent);
 
-  const knownRegistryConfigs = parseRegistryConfigs(npmrcConfigs).filter(
-    (c) => c.type !== RegistryType.Unknown,
-  );
+  const registryConfigs = parseRegistryConfigs(npmrcConfigs);
 
   const repoPatConfigs = getPatConfigs(npmrcConfigs);
   const userPatConfigs = getPatConfigs(userNpmrcConfigs);
 
-  for (const registryConfig of knownRegistryConfigs) {
-    logVerbose(
-      `Processing registry: ${registryConfig.name}=${registryConfig.value}`,
-    );
-    const registryTypeName = (() => {
-      switch (registryConfig.type) {
-        case RegistryType.Ado:
-          return "Azure DevOps";
-        case RegistryType.AdoLegacy:
-          return "Azure DevOps (Legacy style)";
-        default:
-          return "Unknown";
-      }
-    })();
-    logVerbose(`this is a ${registryTypeName} registry`);
+  const registryUrls = new Set(
+    registryConfigs.map((config) => {
+      const url = new URL(config.value);
+      if (!url.pathname.endsWith("/")) url.pathname += "/";
+      return url.href;
+    }),
+  );
+  for (const registryUrl of registryUrls) {
+    logVerbose(`Processing registry: ${registryUrl}`);
+    const patConfigName = getPatConfigName(registryUrl);
 
     logVerbose(`trying to match PAT from repo .npmrc`);
-    const repoPatConfig = findPatConfig(registryConfig, repoPatConfigs);
+    const repoPatConfig = findPatConfig(patConfigName, repoPatConfigs);
     if (repoPatConfig) {
       logVerbose(`Found PAT in repo .npmrc`);
-      if (await verifyPat(registryConfig, repoPatConfig)) {
+      if (await verifyPat(registryUrl, repoPatConfig)) {
         logVerbose(`PAT is valid`);
         continue;
       } else {
         logVerbose(`PAT is invalid`);
         // try to create a new PAT and put it in repo .npmrc
         logVerbose(`Creating new PAT for repo .npmrc`);
-        const newPat = await createPat(registryConfig);
+        const newPat = await createPat(registryUrl);
         logVerbose(`Created new PAT`);
         console.log(`Update repo .npmrc with new PAT`);
         const newRepoPatConfig: NpmConfig = { ...repoPatConfig, value: newPat };
@@ -210,10 +185,10 @@ async function main() {
       logVerbose(`No PAT found in repo .npmrc`);
     }
     logVerbose(`trying to match PAT from user .npmrc`);
-    const userPatConfig = findPatConfig(registryConfig, userPatConfigs);
+    const userPatConfig = findPatConfig(patConfigName, userPatConfigs);
     if (userPatConfig) {
       logVerbose(`Found PAT in user .npmrc`);
-      if (await verifyPat(registryConfig, userPatConfig)) {
+      if (await verifyPat(registryUrl, userPatConfig)) {
         logVerbose(`PAT is valid`);
         continue;
       } else {
@@ -225,7 +200,7 @@ async function main() {
 
     // try to create a new PAT and put it in user .npmrc
     logVerbose(`Creating new PAT for user .npmrc`);
-    const newPat = await createPat(registryConfig);
+    const newPat = await createPat(registryUrl);
     logVerbose(`Created new PAT`);
     if (userPatConfig) {
       console.log(`Update user .npmrc with new PAT`);
@@ -233,9 +208,8 @@ async function main() {
       await updatePat(userNpmrcFilename, newUserPatConfig);
       continue;
     }
-    console.log(`Add new PAT to repo .npmrc`);
-    const patConfigName = getPatConfigName(registryConfig);
-    await addPat(npmrcFilename, patConfigName, newPat);
+    console.log(`Add new PAT to user .npmrc`);
+    await addPat(userNpmrcFilename, patConfigName, newPat);
   }
 }
 
