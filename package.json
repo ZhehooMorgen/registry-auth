@@ -24,11 +24,15 @@
   "files": [
     "dist"
   ],
-  "devDependencies": {
-    "@types/node": "^22.20.5",
-    "typescript": "^7.0.2"
-  },
   "bin": {
     "registry-auth": "dist/main.js"
+  },
+  "dependencies": {
+    "ini": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/ini": "^4.1.1",
+    "@types/node": "^22.20.5",
+    "typescript": "^7.0.2"
   }
 }
