@@ -1,31 +1,8 @@
 #!/usr/bin/env node
 import { parse as iniParse } from "ini";
 import { appendFile, readFile, writeFile } from "node:fs/promises";
-
-const verbose = true;
-
-function logVerbose(content: string) {
-  if (verbose) {
-    console.log(`verbose: ${content}`);
-  }
-}
-
-const adoRegistryDomain = "pkgs.dev.azure.com";
-const legacyAdoRegistryDomain = "pkgs.visualstudio.com";
-
-enum RegistryType {
-  Unknown,
-  Ado,
-  AdoLegacy,
-}
-
-interface NpmConfig {
-  name: string;
-  value: string;
-  position: {
-    line: number;
-  };
-}
+import { createPat, verifyPat } from "./ado.ts";
+import { logVerbose, type NpmConfig } from "./utility.ts";
 
 function parseConfig(config: string): NpmConfig[] {
   const configs = new Map<string, NpmConfig>();
@@ -79,18 +56,6 @@ function findPatConfig(
     configs.find((config) => config.name === configName) ??
     configs.find((config) => config.name === configNameWithoutSlash)
   );
-}
-
-async function verifyPat(
-  registryUrl: string,
-  patConfig: NpmConfig,
-): Promise<boolean> {
-  return false; // Placeholder implementation
-}
-
-async function createPat(registryUrl: string): Promise<string> {
-  // Placeholder implementation
-  return "PLACEHOLDER_PAT";
 }
 
 async function updatePat(filename: string, patConfig: NpmConfig) {
@@ -166,7 +131,7 @@ async function main() {
     logVerbose(`trying to match PAT from repo .npmrc`);
     const repoPatConfig = findPatConfig(patConfigName, repoPatConfigs);
     if (repoPatConfig) {
-      logVerbose(`Found PAT in repo .npmrc`);
+      logVerbose(`Found PAT in repo .npmrc, verifying...`);
       if (await verifyPat(registryUrl, repoPatConfig)) {
         logVerbose(`PAT is valid`);
         continue;
@@ -187,7 +152,7 @@ async function main() {
     logVerbose(`trying to match PAT from user .npmrc`);
     const userPatConfig = findPatConfig(patConfigName, userPatConfigs);
     if (userPatConfig) {
-      logVerbose(`Found PAT in user .npmrc`);
+      logVerbose(`Found PAT in user .npmrc, verifying...`);
       if (await verifyPat(registryUrl, userPatConfig)) {
         logVerbose(`PAT is valid`);
         continue;
