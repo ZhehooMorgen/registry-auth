@@ -97,10 +97,10 @@ function findPatConfig(
   );
 }
 
-function verifyPat(
+async function verifyPat(
   registryConfig: RegistryConfig,
   patConfig: NpmConfig,
-): boolean {
+): Promise<boolean> {
   return false; // Placeholder implementation
 }
 
@@ -127,7 +127,7 @@ async function main() {
   const repoPatConfigs = getPatConfigs(npmrcConfigs);
   const userPatConfigs = getPatConfigs(userNpmrcConfigs);
 
-  knownRegistryConfigs.forEach(async (registryConfig) => {
+  for (const registryConfig of knownRegistryConfigs) {
     logVerbose(
       `Processing registry: ${registryConfig.name}=${registryConfig.value}`,
     );
@@ -147,9 +147,9 @@ async function main() {
     const repoPatConfig = findPatConfig(registryConfig, repoPatConfigs);
     if (repoPatConfig) {
       logVerbose(`Found PAT in repo .npmrc`);
-      if (verifyPat(registryConfig, repoPatConfig)) {
+      if (await verifyPat(registryConfig, repoPatConfig)) {
         logVerbose(`PAT is valid`);
-        return;
+        continue;
       } else {
         logVerbose(`PAT is invalid`);
       }
@@ -160,9 +160,9 @@ async function main() {
     const userPatConfig = findPatConfig(registryConfig, userPatConfigs);
     if (userPatConfig) {
       logVerbose(`Found PAT in user .npmrc`);
-      if (verifyPat(registryConfig, userPatConfig)) {
+      if (await verifyPat(registryConfig, userPatConfig)) {
         logVerbose(`PAT is valid`);
-        return;
+        continue;
       } else {
         logVerbose(`PAT is invalid`);
       }
@@ -171,21 +171,20 @@ async function main() {
     }
     logVerbose(`Trying to create PAT for registry`);
     const newPat = await createPat(registryConfig);
-    logVerbose(`Created new PAT: ${newPat}`);
+    logVerbose(`Created new PAT`);
     if (repoPatConfig) {
       console.log(`Update repo .npmrc with new PAT`);
       // Placeholder for updating user .npmrc with the new PAT
-      return;
+      continue;
     }
     if (userPatConfig) {
       console.log(`Update user .npmrc with new PAT`);
       // Placeholder for updating user .npmrc with the new PAT
-      return;
+      continue;
     }
     console.log(`Add new PAT to repo .npmrc`);
     // Placeholder for adding new PAT to repo .npmrc
-    return;
-  });
+  }
 }
 
 main();
