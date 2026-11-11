@@ -1,7 +1,17 @@
 {
-  "name": "@zhehoo/registry-auth",
-  "version": "0.1.0",
-  "description": "Get you authenticated to private registry",
+  "name": "registry-auth",
+  "version": "0.1.1",
+  "description": "Authenticate npm with Azure Artifacts from the command line.",
+  "keywords": [
+    "npm",
+    "azure-artifacts",
+    "azure-devops",
+    "private-registry",
+    "authentication",
+    "npmrc",
+    "msal",
+    "cli"
+  ],
   "homepage": "https://github.com/ZhehooMorgen/registry-auth#readme",
   "bugs": {
     "url": "https://github.com/ZhehooMorgen/registry-auth/issues"
@@ -25,6 +35,10 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
   "bin": {
     "registry-auth": "dist/main.js"
   },

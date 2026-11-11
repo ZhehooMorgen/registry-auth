@@ -19,6 +19,7 @@ const originalLog = console.log;
 const originalError = console.error;
 const environmentKeys = [
   "HOME",
+  "USERPROFILE",
   "LOCALAPPDATA",
   "XDG_CACHE_HOME",
   "REGISTRY_AUTH_CLIENT_ID",
@@ -121,6 +122,7 @@ beforeEach(() => {
     choice: "1",
   };
   process.env.HOME = directory;
+  process.env.USERPROFILE = directory;
   process.env.LOCALAPPDATA = directory;
   process.env.XDG_CACHE_HOME = directory;
   process.env.REGISTRY_AUTH_CLIENT_ID = clientId;
@@ -416,7 +418,7 @@ test("CLI makes verbose output opt-in and passes -N without changing configurati
     assert.equal(process.exitCode, 1);
     assert.equal(state.prompts, 0);
     assert.equal(
-      state.messages.includes("verbose: @zhehoo/registry-auth"),
+      state.messages.includes("verbose: registry-auth"),
       flags.length > 0,
     );
     assert.equal(

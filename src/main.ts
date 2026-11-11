@@ -132,7 +132,7 @@ async function main() {
   const authOptions = {
     nonInteractive: values["non-interactive"],
   };
-  logVerbose(`@zhehoo/registry-auth`);
+  logVerbose(`registry-auth`);
 
   const npmrcFilename = ".npmrc";
   const userNpmrcFilename = join(homedir(), ".npmrc");

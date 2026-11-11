@@ -5,7 +5,7 @@ Authenticate npm with Azure Artifacts. Requires Node.js 22 or later.
 ## Install
 
 ```sh
-npm install -g @zhehoo/registry-auth
+npm install -g registry-auth
 ```
 
 ## Use
