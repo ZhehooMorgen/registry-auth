@@ -402,7 +402,7 @@ test("CLI makes verbose output opt-in and passes -N without changing configurati
   await writeFile(join(project, ".npmrc"), original);
   await writeFile(join(directory, ".npmrc"), "");
   process.chdir(project);
-  for (const flags of [[], ["--verbose"], ["-v"]]) {
+  for (const flags of [[], ["--verbose"]]) {
     state.messages = [];
     process.exitCode = 0;
     process.argv = [process.execPath, "registry-auth", "-N", ...flags];
@@ -436,4 +436,25 @@ test("CLI makes verbose output opt-in and passes -N without changing configurati
     assert.equal(await readFile(join(project, ".npmrc"), "utf8"), original);
     assert.equal(await readFile(join(directory, ".npmrc"), "utf8"), "");
   }
+});
+
+test("CLI prints version without configuration or authentication", async () => {
+  const project = join(directory, "version");
+  await mkdir(project);
+  process.chdir(project);
+  const { version } = JSON.parse(
+    await readFile(new URL("../package.json", import.meta.url), "utf8"),
+  );
+  for (const flags of [["-v"], ["--version"], ["--version", "--verbose"]]) {
+    state.messages = [];
+    process.exitCode = 0;
+    process.argv = [process.execPath, "registry-auth", ...flags];
+    await import(
+      new URL(`../dist/main.js?version=${flags.join(",")}`, import.meta.url)
+    );
+    assert.equal(process.exitCode, 0);
+    assert.deepEqual(state.messages, [version]);
+  }
+  assert.equal(state.prompts, 0);
+  assert.deepEqual(state.appConfigs, []);
 });

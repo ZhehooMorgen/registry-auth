@@ -108,7 +108,8 @@ async function main() {
   const { values } = parseArgs({
     options: {
       "non-interactive": { type: "boolean", short: "N", default: false },
-      verbose: { type: "boolean", short: "v", default: false },
+      verbose: { type: "boolean", default: false },
+      version: { type: "boolean", short: "v", default: false },
       help: { type: "boolean", short: "h", default: false },
     },
     allowPositionals: false,
@@ -116,8 +117,15 @@ async function main() {
   });
   if (values.help) {
     console.log(
-      "Usage: registry-auth [--non-interactive|-N] [--verbose|-v]\n\n--non-interactive       Fail when silent sign-in cannot obtain a token\n--verbose, -v           Show verbose output",
+      "Usage: registry-auth [--non-interactive|-N] [--verbose] [--version|-v]\n\n--non-interactive       Fail when silent sign-in cannot obtain a token\n--verbose               Show verbose output\n--version, -v           Show version",
     );
+    return;
+  }
+  if (values.version) {
+    const { version } = JSON.parse(
+      await readFile(new URL("../package.json", import.meta.url), "utf8"),
+    );
+    console.log(version);
     return;
   }
   setVerbose(values.verbose);
