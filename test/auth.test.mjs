@@ -173,7 +173,11 @@ test("silent sign-in uses the matching tenant and reuses the client without UI",
   assert.equal(state.prompts, 0);
 });
 
-test("interaction-required offers browser and device code, and closes the menu", async () => {
+test("interaction-required offers browser and device code without a TTY, and closes the menu", async () => {
+  Object.defineProperty(process.stdin, "isTTY", {
+    configurable: true,
+    value: false,
+  });
   for (const [choice, method] of [
     ["1", "browser"],
     ["2", "device-code"],
@@ -196,7 +200,7 @@ test("interaction-required offers browser and device code, and closes the menu",
   assert.equal(state.closed, 3);
 });
 
-test("non-interactive, ambiguous accounts and no TTY never start a login", async () => {
+test("non-interactive mode never starts a login, including ambiguous accounts", async () => {
   await assert.rejects(
     getAccessToken(nextTenant(), { nonInteractive: true }),
     /Interactive sign-in is required/,
@@ -205,14 +209,6 @@ test("non-interactive, ambiguous accounts and no TTY never start a login", async
   state.accounts = [{ tenantId: tenant }, { tenantId: tenant }];
   await assert.rejects(
     getAccessToken(tenant, { nonInteractive: true }),
-    /Interactive sign-in is required/,
-  );
-  Object.defineProperty(process.stdin, "isTTY", {
-    configurable: true,
-    value: false,
-  });
-  await assert.rejects(
-    getAccessToken(nextTenant()),
     /Interactive sign-in is required/,
   );
   assert.equal(state.prompts, 0);

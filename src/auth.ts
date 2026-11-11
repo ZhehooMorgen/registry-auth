@@ -106,9 +106,9 @@ export async function getAccessToken(
     }
   }
 
-  if (options.nonInteractive || !process.stdin.isTTY) {
+  if (options.nonInteractive) {
     throw new Error(
-      "Interactive sign-in is required. Run registry-auth in an interactive terminal without --non-interactive.",
+      "Interactive sign-in is required. Run registry-auth without --non-interactive.",
     );
   }
 
